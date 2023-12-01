@@ -5,4 +5,10 @@ def part1(task_input):
 
 
 def part2(task_input):
-    pass
+    words = ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+    for i in range(len(words)):
+        w = words[i]
+        # keep the first and last letter of each digit to allow overlaps like "onEight". These are at most one letter long.
+        task_input = task_input.replace(w, f'{w[0]}{i + 1}{w[-1]}')
+
+    return part1(task_input)
