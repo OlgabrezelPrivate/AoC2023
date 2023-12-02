@@ -39,4 +39,16 @@ def part1(task_input):
 
 
 def part2(task_input):
-    pass
+    games = get_games(task_input)
+    power_sum = 0
+
+    for g in games:
+        min_r, min_g, min_b = 0, 0, 0
+        for roll in g[1]:
+            min_r = max(min_r, roll['r'])
+            min_g = max(min_g, roll['g'])
+            min_b = max(min_b, roll['b'])
+
+        power_sum += min_r * min_g * min_b
+
+    return power_sum
