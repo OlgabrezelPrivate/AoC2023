@@ -19,4 +19,4 @@ def part1(task_input):
 
 
 def part2(task_input):
-    pass
+    return part1(task_input.replace(' ', '').replace(':', ': '))
