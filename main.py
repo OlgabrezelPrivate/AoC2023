@@ -2,6 +2,7 @@ import argparse
 import importlib
 import os
 import re
+import time
 
 
 def parse_args_and_get_day():
@@ -48,9 +49,21 @@ def main():
     task_input = read_input(DAY)
 
     print(f"===== Ludwig's Advent Of Code 2023 =====\nDay: {DAY}\n\nPart 1:")
-    print(module.part1(task_input))
+    start1 = time.perf_counter()
+    res1 = module.part1(task_input)
+    time1 = time.perf_counter() - start1
+    print(res1)
+
     print("\nPart 2:")
-    print(module.part2(task_input))
+    start2 = time.perf_counter()
+    res2 = module.part2(task_input)
+    time2 = time.perf_counter() - start2
+    print(res2)
+
+    if time1 >= 0.8:
+        print(f"\nPart 1 executed in {time1:.1f} seconds.")
+    if time2 >= 0.8:
+        print(f"\nPart 2 executed in {time2:.1f} seconds.")
 
     input()
 
