@@ -75,4 +75,16 @@ def part1(task_input):
 
 
 def part2(task_input):
-    pass
+    print("Part 2 runs in ~10 minutes... But it does run! Could parallelize/optimize for faster time, meh\nPlease wait...")
+    grid = [list(row) for row in task_input.split('\n')]
+    height = len(grid)
+    width = len(grid[0])
+
+    maximum = 0
+    for j in range(height):
+        maximum = max(maximum, get_energized_tile_count(grid, (j, 0, 'R')))
+        maximum = max(maximum, get_energized_tile_count(grid, (j, width - 1, 'L')))
+    for i in range(width):
+        maximum = max(maximum, get_energized_tile_count(grid, (0, i, 'D')))
+        maximum = max(maximum, get_energized_tile_count(grid, (height - 1, i, 'U')))
+    return maximum
