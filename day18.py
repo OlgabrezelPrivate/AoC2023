@@ -1,93 +1,96 @@
-def extend_ground(ground, position, direction, steps):
-    match direction:
-        case "U":
-            width = len(ground[0])
-            cur_row = position[1]
-            new_row = cur_row - steps
-            while new_row < 0:
-                ground.insert(0, ['.'] * width)
-                new_row += 1
-                cur_row += 1
-                position = (position[0], cur_row)
-        case "D":
-            width = len(ground[0])
-            cur_row = position[1]
-            new_row = cur_row + steps
-            while new_row >= len(ground):
-                ground.append(['.'] * width)
-        case "L":
-            cur_col = position[0]
-            new_col = cur_col - steps
-            while new_col < 0:
-                for i in range(len(ground)):
-                    ground[i].insert(0, '.')
-                new_col += 1
-                cur_col += 1
-                position = (cur_col, position[1])
-        case "R":
-            cur_col = position[0]
-            new_col = cur_col + steps
-            while new_col >= len(ground[0]):
-                for i in range(len(ground)):
-                    ground[i].append('.')
-    return position
+def color_to_instruction(color):
+    match color[-2]:
+        case '0':
+            direction = 'R'
+        case '1':
+            direction = 'D'
+        case '2':
+            direction = 'L'
+        case '3':
+            direction = 'U'
+
+    steps = int(color[2:-2], 16)
+    return direction, steps
 
 
-def dig_edge(instructions):
-    ground = [['#']]
+def get_edges(instructions):
     position = (0, 0)
-    for direction, steps, color in instructions:
-        steps = int(steps)
-        position = extend_ground(ground, position, direction, steps)
-        for i in range(steps):
-            match direction:
-                case "U":
-                    position = (position[0], position[1] - 1)
-                case "D":
-                    position = (position[0], position[1] + 1)
-                case "R":
-                    position = (position[0] + 1, position[1])
-                case "L":
-                    position = (position[0] - 1, position[1])
-            ground[position[1]][position[0]] = '#'
-    return ground
+    edges = []
+    for direction, steps in instructions:
+        match direction:
+            case "U":
+                stop = (position[0], position[1] - steps)
+            case "D":
+                stop = (position[0], position[1] + steps)
+            case "R":
+                stop = (position[0] + steps, position[1])
+            case "L":
+                stop = (position[0] - steps, position[1])
+        edges.append((min(position, stop), max(position, stop)))
+        position = stop
+    return edges
 
 
-def dig_interior(ground):
-    height = len(ground)
-    width = len(ground[0])
-    for j in range(height):
-        inside = False
-        i = 0
-        while i < width:
-            if ground[j][i] == '#':
-                edge_from_top = (j > 0) and (ground[j - 1][i] == '#')
-                while (i + 1 < width) and (ground[j][i + 1] == '#'):
-                    i += 1
-                edge_to_bottom = (j < height - 1) and (ground[j + 1][i] == '#')
-                if edge_from_top == edge_to_bottom:
-                    inside = not inside
-            elif inside:
-                ground[j][i] = 'i'  # mark the tile as "inside" the edge (not an edge) so the rest of the algorithm works.
+def get_row_hole_count(edges, row):
+    horizontal_edges = sorted([e for e in edges if e[0][1] == e[1][1] == row])
+    row_hole_count = sum(e[1][0] - e[0][0] - 1 for e in horizontal_edges)
 
-            i += 1
+    vertical_edges = sorted([e for e in edges if (e[0][0] == e[1][0]) and (e[0][1] <= row <= e[1][1])], key=lambda e: e[0][0])
+    iterator = iter(vertical_edges)
 
-    for j in range(height):
-        for i in range(width):
-            if ground[j][i] == 'i':
-                ground[j][i] = '#'
+    last_x = None
+    for e in iterator:
+        if (e[0][1] == row) or (e[1][1] == row):  # this is the START or END of a vertical edge.
+            e2 = next(iterator)                   # next vertical edge MUST also start or end in the same row. Get it!
+            if (e[0][1] == e2[1][1]) or (e[1][1] == e2[0][1]):  # e2 goes the opposite direction than e - toggle "inside" mode
+                if last_x is None:
+                    last_x = e2[0][0]
+                    row_hole_count += 2  # 2 holes for the 2 edge corners
+                else:
+                    row_hole_count += e[0][0] - last_x + 1
+                    last_x = None
+            else:  # e2 goes the same direction as e - do not toggle "inside" mode but do count the tiles between last_x and e.
+                row_hole_count += 2  # 2 holes for the 2 edge corners
+                if last_x is not None:
+                    row_hole_count += e[0][0] - last_x - 1  # count everything in between (-1 because corners already counted).
+                    last_x = e2[0][0]
+        else:                   # This is NOT start or end of a vertical row. Much easier.
+            if last_x is None:
+                row_hole_count += 1
+                last_x = e[0][0]
+            else:
+                row_hole_count += e[0][0] - last_x
+                last_x = None
+
+    return row_hole_count
 
 
-def print_ground(ground):
-    print('\n'.join([''.join(x) for x in ground]) + '\n')
+def get_hole_count(instructions):
+    edges = get_edges(instructions)
+    hole_count = 0
+
+    top = min([min(e[0][1] for e in edges)] + [min(e[1][1] for e in edges)])
+    bottom = max([max(e[0][1] for e in edges)] + [max(e[1][1] for e in edges)])
+
+    important_y_coordinates = sorted({top, bottom}.union({e[0][1] for e in edges}.union({e[1][1] for e in edges})))
+    last_y = None
+
+    for y in important_y_coordinates:
+        if last_y is not None:
+            hole_count += (y - last_y - 1) * get_row_hole_count(edges, y - 1)
+        hole_count += get_row_hole_count(edges, y)
+        last_y = y
+
+    return hole_count
 
 
 def part1(task_input):
-    instructions = [tuple(x.split(' ')) for x in task_input.split('\n')]
-    ground = dig_edge(instructions)
-    dig_interior(ground)
-    return sum(row.count('#') for row in ground)
+    instructions_raw = [x.split(' ') for x in task_input.split('\n')]
+    instructions = [(ins[0], int(ins[1])) for ins in instructions_raw]
+    return get_hole_count(instructions)
 
 
 def part2(task_input):
-    pass
+    instructions_raw = [x.split(' ') for x in task_input.split('\n')]
+    instructions = [color_to_instruction(ins[2]) for ins in instructions_raw]
+    return get_hole_count(instructions)
