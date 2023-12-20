@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import math
 from typing import Optional, List
 
 
@@ -101,4 +102,29 @@ def part1(task_input):
 
 
 def part2(task_input):
-    pass
+    modules = get_modules(task_input)
+    presses = 0
+    magic_module = next(x for x in modules if 'rx' in modules[x].connected_to)  # the one module that sends a low to rx.
+    highs = {x: None for x in modules if magic_module in modules[x].connected_to}
+
+    while True:
+        presses += 1
+        pulses = [('button', 'broadcaster', False)]
+
+        while len(pulses):
+            from_module_name, to_module_name, is_high = pulses.pop(0)
+
+            # This is so lame. Magically, all of those send a high pulse periodically to the magic module.
+            # Even more magically, all periods start at 0. So just find the first time each of them sends
+            # a high pulse, and take the lcm of all these times. This feels like a recycled riddle from day 8, sadly.
+            # And I already didn't like day 8.
+            if (to_module_name == magic_module) and is_high and (highs[from_module_name] is None):
+                highs[from_module_name] = presses
+                if all(highs[x] is not None for x in highs):
+                    return math.lcm(*highs.values())
+
+            if to_module_name in modules:
+                to_module = modules[to_module_name]
+                result = to_module.on_pulse(from_module_name, is_high)
+                if result is not None:
+                    pulses += [(to_module_name, x, result) for x in to_module.connected_to]
