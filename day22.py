@@ -1,3 +1,8 @@
+from copy import deepcopy
+import multiprocessing
+from functools import partial
+
+
 class Brick:
     def __init__(self, x1, y1, z1, x2, y2, z2):
         self.cubes = {(x, y, z)
@@ -19,6 +24,7 @@ def get_bricks(task_input):
 def fall_bricks(bricks):
     bricks_to_fall = bricks.copy()
     cubes_fallen = set()
+    bricks_that_moved = set()
 
     while len(bricks_to_fall):
         for i in range(len(bricks_to_fall) - 1, -1, -1):
@@ -38,10 +44,13 @@ def fall_bricks(bricks):
                 continue
 
             brick.cubes = {(cube[0], cube[1], cube[2] - 1) for cube in brick.cubes}
+            bricks_that_moved.add(brick)
+
+    return len(bricks_that_moved)
 
 
-def get_bricks_that_are_needed_to_support_other_bricks(bricks):
-    bricks_that_are_needed_to_support_other_bricks = []
+def get_upper_bricks(bricks):
+    upper_bricks = []
 
     for brick in bricks:
         if (0, 1, 4) in brick.cubes:
@@ -63,16 +72,33 @@ def get_bricks_that_are_needed_to_support_other_bricks(bricks):
                     break
 
         if all_bricks_above_have_other_supporter:
-            bricks_that_are_needed_to_support_other_bricks.append(brick)
+            upper_bricks.append(brick)
 
-    return bricks_that_are_needed_to_support_other_bricks
+    return upper_bricks
 
 
 def part1(task_input):
+    print("Part 1 takes some 40 seconds to run, please wait...")
     bricks = get_bricks(task_input)
     fall_bricks(bricks)
-    return len(get_bricks_that_are_needed_to_support_other_bricks(bricks))
+    return len(get_upper_bricks(bricks))
+
+
+def get_falling_count_when_evaporating(brick, bricks, upper_bricks):
+    if brick not in upper_bricks:
+        bricks_copy = [deepcopy(b) for b in bricks if b != brick]
+        return fall_bricks(bricks_copy)
+    return 0
 
 
 def part2(task_input):
-    pass
+    print("If you thought, that was long... Part 2 takes about 22 minutes and uses all cpu cores.\nEnjoy, please wait...")
+    bricks = get_bricks(task_input)
+    fall_bricks(bricks)
+    upper_bricks = set(get_upper_bricks(bricks))
+
+    with multiprocessing.Pool() as pool:
+        counts = pool.map(partial(get_falling_count_when_evaporating, bricks=bricks,
+                                  upper_bricks=upper_bricks), bricks)
+
+    return sum(counts)
